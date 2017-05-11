@@ -17,9 +17,8 @@ def download_cifar10():
 if __name__ == '__main__':
     # download data
     (train_fname, val_fname) = download_cifar10()
-
     # parse args
-    parser = argparse.ArgumentParser(description="train cifar10",
+    parser = argparse.ArgumentParser(description="traincifar10",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     fit.add_fit_args(parser)
     data.add_data_args(parser)
