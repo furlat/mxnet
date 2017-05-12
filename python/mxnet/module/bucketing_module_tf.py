@@ -10,10 +10,10 @@ import warnings
 
 from .. import context as ctx
 
-from ..initializer import Uniform
+from ..initializer_tf import Uniform
 
-from .base_module import BaseModule, _check_input_names
-from .module import Module
+from .base_module_tf import BaseModule, _check_input_names
+from .module_tf import Module
 
 class BucketingModule(BaseModule):
     """A bucketing module is a module that support bucketing.
@@ -64,6 +64,7 @@ class BucketingModule(BaseModule):
         self._buckets = {}
         self._curr_module = None
         self._params_dirty = False
+        self._multi=True
 
     def _reset_bind(self):
         """Internal utility function to reset binding."""

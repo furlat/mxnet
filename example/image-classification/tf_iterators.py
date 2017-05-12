@@ -301,3 +301,41 @@ def imagenet_iterator(data_dir,batch_size):
             #num_parts           = kv.num_workers,
             #part_index          = kv.rank)
     return train, val
+
+def birds_iterator(data_dir,batch_size):
+    train = mx.io.ImageRecordIter(
+            path_imgrec         = os.path.join(data_dir, "birds_train.rec"),
+            label_width         = 1,
+            data_name           = 'data',
+            label_name          = 'softmax1_label',
+            data_shape          = (3, 224, 224),
+            batch_size          = batch_size,
+            pad                 = 0,
+            fill_value          = 127,  # only used when pad is valid
+            rand_crop           = True,
+            max_random_scale    = 1.0,  # 480 with imagnet, 32 with cifar10
+            min_random_scale    = 0.533,  # 256.0/480.0
+            max_aspect_ratio    =  0.25,
+            random_h            = 36,  # 0.4*90
+            random_s            = 50,  # 0.4*127
+            random_l            = 50,  # 0.4*127
+            #max_rotate_angle    = 10,
+            #max_shear_ratio     = 0.1, #
+            rand_mirror         = True,
+            shuffle             = True)
+            #num_parts           = kv.num_workers,
+            #part_index          = kv.rank)
+    val = mx.io.ImageRecordIter(
+            path_imgrec         = os.path.join(data_dir, "birds_test.rec"),
+            label_width         = 1,
+            data_name           = 'data',
+            label_name          = 'softmax1_label',
+            batch_size          = batch_size,
+            max_random_scale    = 0.533,  # 480 with imagnet, 32 with cifar10
+            min_random_scale    = 0.533,  # 256.0/480.
+            data_shape          = (3, 224, 224),
+            rand_crop           = False,
+            rand_mirror         = False)
+            #num_parts           = kv.num_workers,
+            #part_index          = kv.rank)
+    return train, val

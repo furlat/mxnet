@@ -9,14 +9,14 @@ import warnings
 
 from .. import context as ctx
 from .. import ndarray as nd
-from .. import optimizer as opt
+from .. import optimizer_tf as opt
 
-from .executor_group import DataParallelExecutorGroup
-from ..model import _create_kvstore, _initialize_kvstore, _update_params, _update_params_on_kvstore, _update_params_on_kvstore_with_keys
-from ..model import load_checkpoint
-from ..initializer import Uniform, InitDesc
+from .executor_group_tf import DataParallelExecutorGroup
+from ..model_tf import _create_kvstore, _initialize_kvstore, _update_params, _update_params_on_kvstore, _update_params_on_kvstore_with_keys
+from ..model_tf import load_checkpoint
+from ..initializer_tf import Uniform, InitDesc
 
-from .base_module import BaseModule, _check_input_names, _parse_data_desc
+from .base_module_tf import BaseModule, _check_input_names, _parse_data_desc
 
 
 class Module(BaseModule):
@@ -92,6 +92,7 @@ class Module(BaseModule):
         self._exec_group = None
         self._data_shapes = None
         self._label_shapes = None
+        self._tf=True
 
     @staticmethod
     def load(prefix, epoch, load_optimizer_states=False, **kwargs):

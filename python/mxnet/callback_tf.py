@@ -6,7 +6,7 @@ import logging
 import math
 import sys
 import time
-from .model import save_checkpoint
+from .model_tf import save_checkpoint
 
 def module_checkpoint(mod, prefix, period=1, save_optimizer_states=False):
     """Callback to checkpoint Module to prefix every epoch.

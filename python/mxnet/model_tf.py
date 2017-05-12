@@ -12,12 +12,12 @@ import numpy as np
 from . import io
 from . import nd
 from . import symbol as sym
-from . import optimizer as opt
+from . import optimizer_tf as opt
 from . import metric
 from . import kvstore as kvs
 from .context import Context, cpu
-from .initializer import Uniform
-from .optimizer import get_updater
+from .initializer_tf import Uniform
+from .optimizer_tf import get_updater
 from .executor_manager import DataParallelExecutorManager, _check_arguments, _load_data
 from .io import DataDesc
 from .base import mx_real_t

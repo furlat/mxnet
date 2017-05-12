@@ -9,8 +9,8 @@ from .. import metric
 from .. import ndarray
 
 from ..context import cpu
-from ..model import BatchEndParam
-from ..initializer import Uniform
+from ..model_tf import BatchEndParam
+from ..initializer_tf import Uniform
 from ..io import DataDesc
 
 
