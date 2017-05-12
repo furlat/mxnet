@@ -91,7 +91,7 @@ dataset='birds'
 nstream=1
 init_1='imagenet'
 init_2='imagenet'
-freeze=1
+freeze=0
 
 
 
@@ -271,18 +271,18 @@ if logistic_init:
 
 # In[16]:
 
-mod.fit(train_birds,
-         eval_data=val_birds,
-         eval_metric=[Cross_Entropy()],
-         #eval_metric=[mx.metric.Accuracy()],
-
-         batch_end_callback = [mx.callback.log_train_metric(5),mx.callback.Speedometer(batch_size,100)],
-         epoch_end_callback=checkpoint,
-         allow_missing=False,
-         begin_epoch=begin_epoch,
-         log_prefix = model_prefix,
-         optimizer_params={'learning_rate':0.001, 'momentum': 0.9,'wd':0.0004 },
-         num_epoch=120)
+#mod.fit(train_birds,
+#         eval_data=val_birds,
+#         eval_metric=[Cross_Entropy()],
+#         #eval_metric=[mx.metric.Accuracy()],
+#
+#         batch_end_callback = [mx.callback.log_train_metric(50),mx.callback.Speedometer(batch_size,100)],
+#         epoch_end_callback=checkpoint,
+#         allow_missing=False,
+#         begin_epoch=begin_epoch,
+#         log_prefix = model_prefix,
+#         optimizer_params={'learning_rate':0.001, 'momentum': 0.9,'wd':0.0004 },
+#         num_epoch=120)
 
 
 # In[ ]:
@@ -304,9 +304,9 @@ checkpoint_path
 train_score=[]
 val_score=[]
 epoch=[]
-for i in range(0,5,120):
+for i in range(5,100,5):
     
-    sym, arg_params, aux_params =             mx.model.load_checkpoint(checkpoint_path, i+1)
+    sym, arg_params, aux_params =             mx.model.load_checkpoint(checkpoint_path, i)
         
     mod.set_params(arg_params, aux_params)
     
@@ -316,10 +316,10 @@ for i in range(0,5,120):
     res_val= mod.score(val_birds, mx.metric.Accuracy(),num_batch=93)
     epoch.append(i+1)
     for name, value in res_train:
-        print 'Epoch[%d] Training-%s=%f' %(i+1, name, value)
+        print 'Epoch[%d] Training-%s=%f' %(i, name, value)
         train_score.append(value)
     for name, value in res_val:
-        print 'Epoch[%d] Validation-%s=%f' %(i+1, name, value)
+        print 'Epoch[%d] Validation-%s=%f' %(i, name, value)
         val_score.append(value)
         
 #for gate in gatelist:
