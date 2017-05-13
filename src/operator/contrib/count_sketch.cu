@@ -50,7 +50,8 @@ __global__ void sketch_forward_kernel(const int nthreads, DType *out, const DTyp
                     const int in_dim, const int out_dim) {
   // input: n_smaples * in_dim
   // output: n_smaples * out_dim
-  const int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int blockId   = blockIdx.y * gridDim.x + blockIdx.x; 
+  const int index = blockId * blockDim.x + threadIdx.x;
   if (index >= nthreads) {
     return;
   }
@@ -70,7 +71,8 @@ __global__ void sketch_backward_kernel(const int nthreads, DType *in_grad, const
                     const int in_dim, const int out_dim) {
   // only calculate gradient regarding x
   // can also calculate gradient regarding s if needed
-  const int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int blockId   = blockIdx.y * gridDim.x + blockIdx.x; 
+  const int index = blockId * blockDim.x + threadIdx.x;
   const int i_indim = index % in_dim;
   const int i_sample = index / in_dim;
   const int i_outdim = i_sample*out_dim + h[i_indim];
@@ -106,7 +108,9 @@ inline void CountSketchForward(const Tensor<gpu, 2, DType> &out,
     // to make number of threads the same as input
     const int threads_per_block = min(THREADS_PER_BLOCK, nthreads);
     int nblocks = (nthreads + threads_per_block - 1) / threads_per_block;
-    cuda::sketch_forward_kernel<DType><<<nblocks, threads_per_block>>>(
+
+    dim3 grid_sample(nblocks, n_samples, 1);
+    cuda::sketch_forward_kernel<DType><<<grid_sample, threads_per_block>>>(
                                     nthreads, out_ptr+bstart*out_dim, h_ptr,
                                     s_ptr, in_ptr+bstart*in_dim, batchlen,
                                     in_dim, out_dim);
@@ -141,7 +145,8 @@ inline void CountSketchBackward(const Tensor<gpu, 2, DType> &in_grad,
     // to make number of threads the same as input
     const int threads_per_block = min(THREADS_PER_BLOCK, nthreads);
     int nblocks = (nthreads + threads_per_block - 1) / threads_per_block;
-    cuda::sketch_backward_kernel<DType><<<nblocks, threads_per_block>>>(
+    dim3 grid_sample(nblocks, n_samples, 1);
+    cuda::sketch_backward_kernel<DType><<<grid_sample, threads_per_block>>>(
                             nthreads, in_grad_ptr+bstart*in_dim, h_ptr,
                             s_ptr, out_grad_ptr+bstart*out_dim, batchlen,
                             in_dim, out_dim);
@@ -172,3 +177,4 @@ Operator* CreateOp<gpu>(CountSketchParam param, int dtype) {
 }
 }  // namespace op
 }  // namespace mxnet
+

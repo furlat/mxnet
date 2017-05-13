@@ -9,8 +9,47 @@ Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun. "Identity Mappings in Deep Re
 import mxnet as mx
 
 
+def Had_unit(data,in_dim,out_dim,name,workspace,act_type='tanh'):
+    in1=mx.sym.Convolution(data=data, num_filter=in_dim, kernel=(1,1), stride=(1,1), pad=(0,0),
+                                   no_bias=False, workspace=workspace, name=name + 'conv_in1')
+
+    in2=mx.sym.Convolution(data=data, num_filter=in_dim, kernel=(1,1), stride=(1,1), pad=(0,0),
+                                   no_bias=False, workspace=workspace, name=name + 'conv_in2')
+    had=in1*in2
+    had= mx.sym.Activation(data=had, act_type=act_type, name='had_act1')
+    out=mx.sym.Convolution(data=data, num_filter=out_dim, kernel=(1,1), stride=(1,1), pad=(0,0),
+                                   no_bias=False, workspace=workspace, name=name + 'conv_out')
+    return out
+
+def MCB_unit(data,out_dim,name,compute_size = 128, ifftflag = True):
+    #data1=mx.sym.reshape(data,shape=(-1,1,1,0))
+    #data1=mx.sym.reshape(data1,shape=(0,-1))
+    data1=data
+    S1 = mx.sym.Variable(name+'_s1',init = mx.initializer.Plusminusone(),shape = (1,2048),lr_mult=1)
+    H1 = mx.sym.Variable(name+'_h1',init = mx.initializer.Index(out_dim),shape = (1,2048),lr_mult=1)
+    S2 = mx.sym.Variable(name+'_s2',init = mx.initializer.Plusminusone(),shape = (1,2048),lr_mult=1)
+    H2 = mx.sym.Variable(name+'_h2',init = mx.initializer.Index(out_dim),shape = (1,2048),lr_mult=1)
+  
+    cs1 = mx.contrib.sym.count_sketch( data = data1,s = S1, h = H1,name= name +'_cs1',out_dim = out_dim, processing_batch_size=32) 
+    cs2 = mx.contrib.sym.count_sketch( data = data1,s = S2, h = H2,name=name +'_cs2',out_dim = out_dim,processing_batch_size=32) 
+    fft1 = mx.contrib.sym.fft(data = cs1, name=name+'_fft1', compute_size = compute_size) 
+    #fft1 = mx.sym.BatchNorm(data=fft1, fix_gamma=False, eps=2e-5, name='bn_fft1')
+    #fft1 = mx.sym.Activation(data=fft1, act_type='relu', name='fft1_relu1')
+    fft2 = mx.contrib.sym.fft(data = cs2, name=name+'_fft2', compute_size = compute_size) 
+    #fft2 = mx.sym.BatchNorm(data=fft2, fix_gamma=False, eps=2e-5, name='bn_fft2')
+    ##fft2 = mx.sym.Activation(data=fft2, act_type='relu', name='fft2_relu1')
 
 
+    c = fft1 * fft2
+    if ifftflag:
+        ifft = mx.contrib.sym.ifft(data = c, name=name+'_ifft', compute_size = compute_size) 
+        #ifft = mx.sym.reshape(ifft,shape=(-1,14,14,out_dim))
+
+        return ifft
+    else:
+        c = mx.sym.reshape(c,shape=(-1,14,14,out_dim))
+        return c
+    
 
 def residual_gate(data,name,layer_name,workspace,gate_prefix,image_shape=(3,224,224), gate_act='relu',gate_init=mx.initializer.One(),lr_mult=0.001, wd_mult=0):
     
@@ -415,7 +454,7 @@ def residual_unit_mbranch(data, num_filter, num_branch, stride, dim_match,image_
     
     
     
-def resnet(units, num_stages, filter_list, num_classes,rescale_grad,image_shape,gate_prefix=None,active=None,gated=False,bottle_neck=True, bn_mom=0.9, workspace=256, memonger=False):
+def resnet(units, num_stages, filter_list, num_classes,rescale_grad,image_shape,bilinear=False,gate_prefix=None,active=None,gated=False,bottle_neck=True, bn_mom=0.9, workspace=256, memonger=False):
     """Return ResNet symbol of multitask, it accepts [0] entries in the num_classes, allowing not to create all the decision layers based on the bucket key (input of the relative get symbol) but still mantain the output naming convetion --> successive modification will allow to specifiy more differences across buckets by introducing some bucket-scopes for the names
     Parameters
     weights= weightnama,
@@ -457,10 +496,31 @@ def resnet(units, num_stages, filter_list, num_classes,rescale_grad,image_shape,
                                  bottle_neck=bottle_neck,gate_prefix=gate_prefix, prefix=None, gated=gated, image_shape=image_shape, workspace=workspace, memonger=memonger)
     bn1 = mx.sym.BatchNorm(data=body, fix_gamma=False, eps=2e-5, momentum=bn_mom, name='bn1')
     relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
-    #here ends the task specific
-    # Although kernel is not used here when global_pool=True, we should put one
-    pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
+    pre_shape = relu1.infer_shape(data=(1,image_shape[0],image_shape[1],image_shape[2]))
+    print "mio shape" , pre_shape[1]
+
+    if bilinear:
+        bilin1=Had_unit(relu1,1024,8192,'had_',workspace,act_type='tanh')
+
+        #swapped=mx.sym.SwapAxis(data=bn1,dim1=1,dim2=3)
+        
+    
+        #bilin1=MCB_unit(swapped,1500,'bilinear1',compute_size = 1500, ifftflag = True)
+        #swapped2=mx.sym.SwapAxis(data=bilin1,dim1=3,dim2=1)
+        bn2 = mx.sym.BatchNorm(data=bilin1, fix_gamma=False, eps=2e-5, momentum=bn_mom, name='bn2')
+        relu2 = mx.sym.Activation(data=bn2, act_type='relu', name='relu2')
+        pool1 = mx.symbol.Pooling(data=relu2, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
+        
+    else:
+        pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
+        
     flat = mx.symbol.Flatten(data=pool1)
+    pool_shape = pool1.infer_shape(data=(1,image_shape[0],image_shape[1],image_shape[2]))
+    print "mio shape" , pool_shape[1]
+    
+    
+    
+    
     fc_t = []
     fcw_t = []
     s_t = []
@@ -645,7 +705,7 @@ def resnet_mbranch(units, num_stages,num_branch, filter_list, num_classes,rescal
     return out,['data'],label_names  
 
 
-def get_symbol(num_classes,active,rescale_grad, num_layers, image_shape,gate_prefix=None,gated=False, conv_workspace=256, **kwargs):
+def get_symbol(num_classes,active,rescale_grad, num_layers, image_shape,bilinear=False,gate_prefix=None,gated=False, conv_workspace=256, **kwargs):
     """
     This can be used in a bucketing scenario where the bucket key is a list of num_classes [...], might generate errors if the same index has different >0 values at differnt buckets.
     Adapted from https://github.com/tornadomeet/ResNet/blob/master/train_resnet.py
@@ -698,6 +758,7 @@ def get_symbol(num_classes,active,rescale_grad, num_layers, image_shape,gate_pre
                   active      = active,
                   rescale_grad = rescale_grad,
                   gated = gated,
+                  bilinear = bilinear,
                   gate_prefix=gate_prefix,
                   image_shape = image_shape,
                   bottle_neck = bottle_neck,

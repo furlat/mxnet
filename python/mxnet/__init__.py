@@ -23,9 +23,9 @@ from . import random as rnd
 from . import random
 from . import optimizer
 from . import model
-from . import initializer
+from . import initializer_tf as initializer
 # use mx.init as short for mx.initializer
-from . import initializer as init
+from . import initializer_tf as init
 from . import visualization
 # use viz as short for mx.ndarray
 from . import visualization as viz
