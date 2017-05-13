@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 import os
 import argparse
@@ -17,7 +17,7 @@ from mxnet import nd
 #from mxnet.module.module_tf import *
 
 
-# In[ ]:
+# In[2]:
 
 def birds_iterator(data_dir,batch_size):
     train = mx.io.ImageRecordIter(
@@ -32,10 +32,10 @@ def birds_iterator(data_dir,batch_size):
             #rand_crop           = True,
             max_random_scale    = 1.0,  # 480 with imagnet, 32 with cifar10 448 with birds 0.93
             min_random_scale    = 0.93,  # 256.0/480.0
-            max_aspect_ratio    =  0.25,
-            random_h            = 36,  # 0.4*90
-            random_s            = 50,  # 0.4*127
-            random_l            = 50,  # 0.4*127
+            #max_aspect_ratio    =  0.25,
+            #random_h            = 36,  # 0.4*90
+            #random_s            = 50,  # 0.4*127
+            #random_l            = 50,  # 0.4*127
             #max_rotate_angle    = 10,
             #max_shear_ratio     = 0.1, #
             rand_mirror         = True,
@@ -58,7 +58,7 @@ def birds_iterator(data_dir,batch_size):
     return train, val
 
 
-# In[ ]:
+# In[3]:
 
 class Cross_Entropy(mx.metric.EvalMetric):
     """Calculate accuracies of multi label"""
@@ -76,27 +76,26 @@ class Cross_Entropy(mx.metric.EvalMetric):
         self.num_inst += label.shape[0]
 
 
-# In[ ]:
+# In[4]:
 
-image_shape = '3,444,444'
+image_shape = '3,448,448'
 batch_size = 16
 results_prefix='/home/ubuntu/results/'
 
 #results_prefix='/efs/users/furlat/v1_results/'http://127.0.0.1:8888/notebooks/example/image-classification/v2_single_task_template.ipynb#
 
 
-# In[ ]:
+# In[5]:
 
 dataset='birds'
 nstream=1
 init_1='imagenet'
 init_2='imagenet'
-freeze=0
-logistic_init=True    
+freeze=1
 
 
 
-# In[ ]:
+# In[6]:
 
 if dataset == 'birds':
     data_dir_birds='/home/ubuntu/data/birds'
@@ -106,7 +105,7 @@ if dataset == 'birds':
     
 
 
-# In[ ]:
+# In[7]:
 
 
 
@@ -147,7 +146,7 @@ elif nstream==2:
     
 
 
-# In[ ]:
+# In[8]:
 
 #mx.viz.plot_network(symbol=sym)
 
@@ -195,12 +194,12 @@ symlist=sym.list_arguments()
 gatelist=[s for s in symlist if 'gate' in s]
 
 
-# In[ ]:
+# In[9]:
 
 #imagenet_par
 
 
-# In[ ]:
+# In[10]:
 
 
 
@@ -217,7 +216,7 @@ else:
     
     
 if nstream == 2:
-    model_prefix = arch+'-fix'+str(freeze)+'-'+logistic_init+'-'+init_1+'-'+init_2+'-'+dataset
+    model_prefix = arch+'-fix'+str(freeze)+'-'+init_1+'-'+init_2+'-'+dataset
     if init_2=='rand':
         print 'initizalizing right stream from random'
     print model_prefix
@@ -254,7 +253,7 @@ checkpoint = mx.callback.module_checkpoint(mod,checkpoint_path,period=5)
 
 
 
-# In[ ]:
+# In[11]:
 
 begin_epoch=0
 if begin_epoch>0:
@@ -262,21 +261,22 @@ if begin_epoch>0:
 
     mod.set_params(arg_params, aux_params)
     
+logistic_init=False    
 if logistic_init:
     logistic_path='/home/ubuntu/results/resnet-fix1-imagenet-birds'
-    _, arg_params, aux_params =mx.model.load_checkpoint(logistic_path, 50)
+    _, arg_params, aux_params =mx.model.load_checkpoint(logistic_path, 120)
 
     mod.set_params(arg_params, aux_params)    
 
 
-# In[ ]:
+# In[16]:
 
 mod.fit(train_birds,
          eval_data=val_birds,
          eval_metric=[Cross_Entropy()],
          #eval_metric=[mx.metric.Accuracy()],
 
-         batch_end_callback = [mx.callback.log_train_metric(5),mx.callback.Speedometer(batch_size,100)],
+         batch_end_callback = [mx.callback.log_train_metric(50),mx.callback.Speedometer(batch_size,100)],
          epoch_end_callback=checkpoint,
          allow_missing=False,
          begin_epoch=begin_epoch,
@@ -304,9 +304,9 @@ checkpoint_path
 train_score=[]
 val_score=[]
 epoch=[]
-for i in range(0,5,120):
+for i in range(5,91,5):
     
-    sym, arg_params, aux_params =             mx.model.load_checkpoint(checkpoint_path, i+1)
+    sym, arg_params, aux_params =             mx.model.load_checkpoint(checkpoint_path, i)
         
     mod.set_params(arg_params, aux_params)
     
@@ -316,10 +316,10 @@ for i in range(0,5,120):
     res_val= mod.score(val_birds, mx.metric.Accuracy(),num_batch=93)
     epoch.append(i+1)
     for name, value in res_train:
-        print 'Epoch[%d] Training-%s=%f' %(i+1, name, value)
+        print 'Epoch[%d] Training-%s=%f' %(i, name, value)
         train_score.append(value)
     for name, value in res_val:
-        print 'Epoch[%d] Validation-%s=%f' %(i+1, name, value)
+        print 'Epoch[%d] Validation-%s=%f' %(i, name, value)
         val_score.append(value)
         
 #for gate in gatelist:
