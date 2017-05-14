@@ -16,10 +16,10 @@ def Had_unit(data,in_dim,out_dim,name,workspace,act_type='tanh'):
     in2=mx.sym.Convolution(data=data, num_filter=in_dim, kernel=(1,1), stride=(1,1), pad=(0,0),
                                    no_bias=False, workspace=workspace, name=name + 'conv_in2')
     had=in1*in2
-    had= mx.sym.Activation(data=had, act_type=act_type, name='had_act1')
-    out=mx.sym.Convolution(data=data, num_filter=out_dim, kernel=(1,1), stride=(1,1), pad=(0,0),
-                                   no_bias=False, workspace=workspace, name=name + 'conv_out')
-    return out
+    #had= mx.sym.Activation(data=had, act_type=act_type, name='had_act1')
+    #out=mx.sym.Convolution(data=data, num_filter=out_dim, kernel=(1,1), stride=(1,1), pad=(0,0),
+     #                              no_bias=False, workspace=workspace, name=name + 'conv_out')
+    return had
 
 def MCB_unit(data,out_dim,name,compute_size = 128, ifftflag = True):
     #data1=mx.sym.reshape(data,shape=(-1,1,1,0))
@@ -454,7 +454,7 @@ def residual_unit_mbranch(data, num_filter, num_branch, stride, dim_match,image_
     
     
     
-def resnet(units, num_stages, filter_list, num_classes,rescale_grad,image_shape,bilinear=False,gate_prefix=None,active=None,gated=False,bottle_neck=True, bn_mom=0.9, workspace=256, memonger=False):
+def resnet(units, num_stages, filter_list, num_classes,rescale_grad,image_shape,dropout=0,bilinear=False,gate_prefix=None,active=None,gated=False,bottle_neck=True, bn_mom=0.9, workspace=256, memonger=False):
     """Return ResNet symbol of multitask, it accepts [0] entries in the num_classes, allowing not to create all the decision layers based on the bucket key (input of the relative get symbol) but still mantain the output naming convetion --> successive modification will allow to specifiy more differences across buckets by introducing some bucket-scopes for the names
     Parameters
     weights= weightnama,
@@ -500,7 +500,9 @@ def resnet(units, num_stages, filter_list, num_classes,rescale_grad,image_shape,
     print "mio shape" , pre_shape[1]
 
     if bilinear:
-        bilin1=Had_unit(relu1,1024,8192,'had_',workspace,act_type='tanh')
+        #bilin1=mx.sym.Convolution(data=relu1, num_filter=4000, kernel=(1,1), stride=(1,1), pad=(0,0),
+                                   #no_bias=False, workspace=workspace, name=  'no_sushi_conv_out')
+        bilin1=Had_unit(relu1,4000,8000,'had_',workspace,act_type='tanh')
 
         #swapped=mx.sym.SwapAxis(data=bn1,dim1=1,dim2=3)
         
@@ -515,6 +517,9 @@ def resnet(units, num_stages, filter_list, num_classes,rescale_grad,image_shape,
         pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
         
     flat = mx.symbol.Flatten(data=pool1)
+    if dropout>0:
+        print "ho dropout %.2f" %(dropout)
+        flat = mx.sym.Dropout(flat, p = dropout)
     pool_shape = pool1.infer_shape(data=(1,image_shape[0],image_shape[1],image_shape[2]))
     print "mio shape" , pool_shape[1]
     
@@ -705,7 +710,7 @@ def resnet_mbranch(units, num_stages,num_branch, filter_list, num_classes,rescal
     return out,['data'],label_names  
 
 
-def get_symbol(num_classes,active,rescale_grad, num_layers, image_shape,bilinear=False,gate_prefix=None,gated=False, conv_workspace=256, **kwargs):
+def get_symbol(num_classes,active,rescale_grad, num_layers, image_shape,dropout=0,bilinear=False,gate_prefix=None,gated=False, conv_workspace=256, **kwargs):
     """
     This can be used in a bucketing scenario where the bucket key is a list of num_classes [...], might generate errors if the same index has different >0 values at differnt buckets.
     Adapted from https://github.com/tornadomeet/ResNet/blob/master/train_resnet.py
@@ -758,6 +763,7 @@ def get_symbol(num_classes,active,rescale_grad, num_layers, image_shape,bilinear
                   active      = active,
                   rescale_grad = rescale_grad,
                   gated = gated,
+                  dropout=dropout,
                   bilinear = bilinear,
                   gate_prefix=gate_prefix,
                   image_shape = image_shape,
