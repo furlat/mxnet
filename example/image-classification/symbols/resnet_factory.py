@@ -8,6 +8,16 @@ Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun. "Identity Mappings in Deep Re
 '''
 import mxnet as mx
 
+def Bil_unit(data,name,workspace):
+    in1=mx.sym.Convolution(data=data, num_filter=350, kernel=(1,1), stride=(1,1), pad=(0,0),
+                                   no_bias=False, workspace=workspace, name=name + 'conv_in1')
+    in1 = mx.sym.BatchNorm(data=in1, fix_gamma=False, eps=2e-5,  name=name+'bn')
+    in1= mx.sym.Activation(data=in1, act_type='relu', name='had_act1')
+    in1=mx.sym.reshape(in1,shape=(-1,0,1))
+    out=mx.sym.batch_dot(in1,in1,transpose_a=False,transpose_b=True,name=name+'_bilinear')
+    out=mx.sym.reshape(out,shape=(0,-1))
+    out=mx.sym.reshape(out,shape=(-1,0,14,14))
+    return out
 
 def Had_unit(data,in_dim,out_dim,name,workspace,act_type='tanh'):
     in1=mx.sym.Convolution(data=data, num_filter=in_dim, kernel=(1,1), stride=(1,1), pad=(0,0),
@@ -502,8 +512,8 @@ def resnet(units, num_stages, filter_list, num_classes,rescale_grad,image_shape,
     if bilinear:
         #bilin1=mx.sym.Convolution(data=relu1, num_filter=4000, kernel=(1,1), stride=(1,1), pad=(0,0),
                                    #no_bias=False, workspace=workspace, name=  'no_sushi_conv_out')
-        bilin1=Had_unit(relu1,4000,8000,'had_',workspace,act_type='tanh')
-
+        #bilin1=Had_unit(relu1,4000,8000,'had_',workspace,act_type='tanh')
+        bilin1=Bil_unit(relu1,'bilin1',workspace)
         #swapped=mx.sym.SwapAxis(data=bn1,dim1=1,dim2=3)
         
     

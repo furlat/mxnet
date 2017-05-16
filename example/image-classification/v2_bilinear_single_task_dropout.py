@@ -36,11 +36,11 @@ def birds_iterator(data_dir,batch_size):
             fill_value          = 127,  # only used when pad is valid
             rand_crop           = True,
             max_random_scale    = 1.0,  # 480 with imagnet, 32 with cifar10 448 with birds 0.93
-            min_random_scale    = 0.93,  # 256.0/480.0=0.53
-#             max_aspect_ratio    =  0.25,
-#             random_h            = 36,  # 0.4*90
-#             random_s            = 50,  # 0.4*127
-#             random_l            = 50,  # 0.4*127
+            min_random_scale    = 0.93,  # 256.0/480.0
+            #max_aspect_ratio    =  0.25,
+            #random_h            = 36,  # 0.4*90
+            #random_s            = 50,  # 0.4*127
+            #random_l            = 50,  # 0.4*127
             #max_rotate_angle    = 10,
             #max_shear_ratio     = 0.1, #
             rand_mirror         = True,
@@ -97,8 +97,10 @@ nstream=1
 init_1='imagenet'
 init_2='imagenet'
 freeze=0
-bilinear=False
+bilinear=True
+dropout=0.5
 num_layers=101
+
 
 
 # In[6]:
@@ -128,14 +130,14 @@ net = import_module('symbols.resnet_factory')
 if nstream == 1:
     print 'plain resnet'
 
-    ctx=[mx.gpu(0),mx.gpu(1),mx.gpu(2),mx.gpu(3)]    
+    ctx=[mx.gpu(4),mx.gpu(5),mx.gpu(6),mx.gpu(7)]    
     #ctx=[mx.gpu(0+(3*gpu_block)),mx.gpu(1+(3*gpu_block)),mx.gpu(2+(3*gpu_block))]
     #print 'gpu bloc%2d : using gpu %2d to %2d' %(gpu_block,0+(3*gpu_block),2+(3*gpu_block))
 
     arch='resnet'
     if bilinear:
         arch+='_bilinear'
-    sym,data,labels=net.get_symbol(num_classes=num_classes,active=[1],bilinear=bilinear, gate_prefix=None,rescale_grad=1, num_layers=num_layers,gated=False, image_shape=image_shape)
+    sym,data,labels=net.get_symbol(num_classes=num_classes,active=[1],dropout=dropout,bilinear=bilinear, gate_prefix=None,rescale_grad=1, num_layers=num_layers,gated=False, image_shape=image_shape)
 elif nstream==2:
     print 'multi branch resnet - Good luck daddy ;)'
     #with batch size 256  5*9686M +1*10550 ~6 full k80 Speed: 52.49 samples/sec
@@ -177,8 +179,8 @@ prefix = imagenet_weights
 prefix = tornado_weights
 
 #prefix = model_prefix
-epoch=120
-save_dict = nd.load('%s-%04d.params' % (prefix, 0))
+epoch=0
+save_dict = nd.load('%s-%04d.params' % (prefix, epoch))
 arg_params_imag = {}
 aux_params_imag = {}
 ext_check=['sc','fc1','data']
@@ -250,7 +252,7 @@ if nstream == 2:
         fixed=None
 else:
     #only the parameters from the original 1stream imagenet network
-    model_prefix =  arch+'-'+str(num_layers)+'-nodrop-fix'+str(freeze)+'-'+init_1+'-'+dataset
+    model_prefix =  arch+'-'+str(num_layers)+'-fix'+str(freeze)+'-'+init_1+'-'+dataset
     print model_prefix
     if freeze==1:
         
@@ -312,12 +314,9 @@ mod.fit(train_birds,
 checkpoint_path
 
 
+# res101
+
 # In[ ]:
-
-#resnet101 bilinear 4kout
-
-
-# In[15]:
 
 
 
@@ -326,7 +325,7 @@ checkpoint_path
 train_score=[]
 val_score=[]
 epoch=[]
-for i in range(25,26,5):
+for i in range(45,46,5):
     
     sym, arg_params, aux_params =             mx.model.load_checkpoint(checkpoint_path, i)
         
@@ -364,7 +363,13 @@ logfile.close()
 
 # In[ ]:
 
+# Epoch[5] Training-accuracy=0.836617
+# Epoch[5] Validation-accuracy=0.568274
+# Epoch[10] Training-accuracy=0.946671
+# Epoch[10] Validation-accuracy=0.672554
+
+
+# In[ ]:
 
 
 
-# ## 
