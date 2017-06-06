@@ -120,7 +120,7 @@ class Cross_Entropy(mx.metric.EvalMetric):
 # In[4]:
 
 image_shape = '3,224,224'
-batch_size = 128
+batch_size = 256
 results_prefix='/home/ubuntu/results/'
 
 #results_prefix='/efs/users/furlat/v1_results/'http://127.0.0.1:8888/notebooks/example/image-classification/v2_single_task_template.ipynb#
@@ -132,8 +132,9 @@ subset='global'
 nstream=1
 init_1='imagenet'
 init_2='imagenet'
-freeze=0
+freeze=1
 num_layers=101
+lr=0.5
 
 
 # In[6]:
@@ -169,7 +170,11 @@ net = import_module('symbols.resnet_factory')
 if nstream == 1:
     print 'plain resnet'
 
-    ctx=[mx.gpu(0),mx.gpu(1),mx.gpu(2),mx.gpu(3)]    
+    #ctx=[mx.gpu(0),mx.gpu(1),mx.gpu(2),mx.gpu(3),mx.gpu(4)]   
+    ctx=[mx.gpu(5),mx.gpu(6),mx.gpu(7),mx.gpu(8),mx.gpu(9)]
+    #ctx=[mx.gpu(10),mx.gpu(11),mx.gpu(12),mx.gpu(13),mx.gpu(14)]    
+
+
     #ctx=[mx.gpu(0+(3*gpu_block)),mx.gpu(1+(3*gpu_block)),mx.gpu(2+(3*gpu_block))]
     #print 'gpu bloc%2d : using gpu %2d to %2d' %(gpu_block,0+(3*gpu_block),2+(3*gpu_block))
 
@@ -275,7 +280,7 @@ if nstream == 2:
         fixed=None
 else:
     #only the parameters from the original 1stream imagenet network
-    model_prefix =  arch+'-'+str(num_layers)+'-fix'+str(freeze)+'-'+init_1+'-'+subset
+    model_prefix =  arch+'-'+str(num_layers)+'-fix'+str(freeze)+'-'+init_1+'-'+subset+'-'+str(lr)
     print model_prefix
     if freeze==1:
         
@@ -332,7 +337,7 @@ mod.fit(warm_up,
          num_epoch=1)
 
 
-# In[13]:
+# In[14]:
 
 mod.fit(train_inat,
          eval_data=val_inat,
@@ -344,7 +349,7 @@ mod.fit(train_inat,
          allow_missing=False,
          begin_epoch=begin_epoch,
          log_prefix = model_prefix,
-         optimizer_params={'learning_rate':0.1, 'momentum': 0.9,'wd':0.0004 },
+         optimizer_params={'learning_rate':lr, 'momentum': 0.9,'wd':0.0004 },
          num_epoch=90)
 
 
